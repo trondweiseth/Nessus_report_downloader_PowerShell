@@ -212,13 +212,20 @@ Function NessusScan {
     )
 
     if ($WindowsPatch) {
-        Nessusreport | Where-Object {$_.name -imatch "($Date)" -and $_.host -imatch $HostName -and $_.name -imatch "update" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk | Sort-Object $sort -Descending
+        Nessusreport | 
+        Where-Object {$_.name -imatch "($Date)" -and $_.host -imatch $HostName -and $_.name -imatch "update" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} |
+        Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk | Sort-Object $sort -Descending
     }
     if ($Vulnerabilities) {
-        Nessusreport | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk  | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Sort-Object $sort -Descending
+        Nessusreport |
+        Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk  |
+        Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} |
+        Sort-Object $sort -Descending
     }
     if (!$WindowsPatch -and !$Vulnerabilities) {
-        Nessusreport | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Sort-Object $sort -Descending
+        Nessusreport |
+        Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} |
+        Sort-Object $sort -Descending
     }
 }
 
