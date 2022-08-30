@@ -1,3 +1,4 @@
+# Setting variable for scipt path
 $Global:scriptpath = $PSScriptRoot
 
 Function Get-NessusReports {
@@ -22,7 +23,7 @@ Function Get-NessusReports {
         break
     }
 
-#disable ssl check
+# Disable ssl validation
 add-type @"
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
@@ -49,8 +50,8 @@ add-type @"
     $AccessKey = $($key = get-content $scriptpath\key.txt | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
     $SecretKey = $($secret = get-content $scriptpath\secret.txt | ConvertTo-SecureString ; [pscredential]::new('user',$secret).GetNetworkCredential().Password)
 
+    # File structuring for diff comparison
     if (!$List -and $Format -ne 'html') {
-        # File structuring for diff comparison
         if (!(Test-Path $BasePath)) {[void](New-Item -Path $HOME -Name NessusReports -ItemType Directory)}
         if (!(Test-Path $BasePath\CurrentNessusScan)) {[void](New-Item -Path $BasePath -Name CurrentNessusScan -ItemType Directory)}
         if (!(Test-Path $BasePath\PreviousNessusScan)) {[void](New-Item -Path $BasePath -Name PreviousNessusScan -ItemType Directory)}
@@ -58,6 +59,7 @@ add-type @"
         [void](Move-Item $BasePath\CurrentNessusScan\* -Destination $BasePath\PreviousNessusScan -Force)
     }
 
+    # Fetching Nessus scan(s)
     function scans {
         # Parameters
         $scans = @{
@@ -91,6 +93,7 @@ add-type @"
         }
     }
 
+    # Exporting Nessus scan(s)
     function export {
         # Parameters
         $BodyParams = @{
@@ -112,6 +115,7 @@ add-type @"
         $Global:FileID = $Json.file
     }
 
+    # Downloads Nessus scan(s)
     function download {
         $download = @{
             "Uri"     = "$Base_URL/scans/$ScanID/export/$FileID/download"
@@ -136,6 +140,7 @@ add-type @"
         }
     }
 
+    # Main execution
     if ($list) {
         scans
     }
@@ -150,6 +155,7 @@ add-type @"
     }
 }
 
+# Importing downloaded nessus scan(s) to funtion Nessusreport
 Function Import-NessusReports {
     param
     ([switch]$Previous)
@@ -160,11 +166,13 @@ Function Import-NessusReports {
     Write-Host -ForegroundColor Cyan 'Nessusreports imported to function Nessusreport'
 }
 
+# Output nessusreport(s)
 Function Nessusreport {
     if (!$NessusReports) {Import-NessusReports}
     Write-Output $NessusReports
 }
 
+# Predefined parsing through nessus report(s)
 Function NessusScan {
     [CmdletBinding()]
     param
@@ -207,6 +215,7 @@ Function NessusScan {
     }
 }
 
+# Comparing previous downloaded report(s) with last.
 Function Nessus-Diff {
     $Current = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\CurrentNessusScan -Filter '*.csv').FullName
     $Previous = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\PreviousNessusScan -Filter '*.csv').FullName
@@ -220,6 +229,7 @@ Function Nessus-Diff {
     }
 }
 
+# Adding nessus API keys for the script to use
 Function Add-NessusAPIkeys {
     $key = Read-Host -Prompt "Accesskey" -AsSecureString
     $key | ConvertFrom-SecureString > $scriptpath\key.txt
