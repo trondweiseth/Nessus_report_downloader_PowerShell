@@ -177,7 +177,7 @@ Function Nessusreport {
 }
 
 # Predefined parsing through nessus report(s)
-Function NessusScan {
+Function NessusQuery {
     [CmdletBinding()]
     param
     (
