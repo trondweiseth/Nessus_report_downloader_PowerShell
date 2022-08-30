@@ -233,3 +233,11 @@ Function Add-NessusAPIkeys {
     $secret = Read-Host -Prompt "Secret" -AsSecureString
     $secret | ConvertFrom-SecureString > $scriptpath\secret.txt
 }
+
+# Exporting all nessus reports in to one single CSV file.
+Function Export-Nessusreports {
+    param([string]$Path = "$HOME")
+    $date = get-date -Format "dd_MM_yyyy"
+    if (!$NessusReports) {Import-NessusReports}
+    $NessusReports | Export-Csv $Path\fullreport_$date.csv
+}
