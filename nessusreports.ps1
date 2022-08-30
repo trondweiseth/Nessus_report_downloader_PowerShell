@@ -45,10 +45,10 @@ add-type @"
 
     # Global parameters
     $Global:FileFormat = $Format
-    $Global:Base_URL = "https://${ServerName}:8834"
-    $Global:BasePath = "$env:HOMEPATH\NessusReports"
-    $Global:path = "$BasePath\CurrentNessusScan"
-    $Global:prevpath = "$BasePath\PreviousNessusScan"
+    $Global:Base_URL   = "https://${ServerName}:8834"
+    $Global:BasePath   = "$env:HOMEPATH\NessusReports"
+    $Global:path       = "$BasePath\CurrentNessusScan"
+    $Global:prevpath   = "$BasePath\PreviousNessusScan"
 
     # Nessus Authentication
     $AccessKey = $($key = get-content $scriptpath\key.txt | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
