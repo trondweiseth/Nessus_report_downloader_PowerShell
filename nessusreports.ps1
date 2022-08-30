@@ -1,3 +1,30 @@
+<#
+.SYNOPSIS
+    Nessus script
+.DESCRIPTION
+    Script to download single nessusreport(s) or in bulk and parse through them all.
+.PARAMETER Get-NessusReports
+    [-SelectScans] [-Format [csv|html|pdf](Default:csv)]
+.PARAMETER NessusQuery
+     [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
+     [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')]
+.PARAMETER Nessus-Diff
+    None
+.PARAMETER Export-Nessusreports
+    [-Path <path> [Default($HOME)]]
+.INPUTS
+    None
+.OUTPUTS
+    None
+.NOTES
+    Version:        1.0
+    Author:         Trond Weiseth
+    Creation Date:  29.08.2022
+    Purpose/Change: Initial script development
+.EXAMPLE
+    None
+#>
+
 # Setting variable for scipt path
 $Global:scriptpath = $PSScriptRoot
 
