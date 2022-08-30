@@ -15,7 +15,11 @@ Function Get-NessusReports {
         [string]$Format = 'csv',
 
         [Parameter(Mandatory=$false)]
-        [string]$ServerName = "nessusserver.net"
+        [string]$ServerName = 'nessusserver.net',
+
+        [Parameter(Mandatory=$false)]
+        [validateset('vuln_by_host','vuln_hosts_summary','vuln_by_plugin','remediations')]
+        [string]$Chapter = 'vuln_hosts_summary'
     )
 
     if (!(Test-Path $scriptpath\key.txt) -or !(Test-Path $scriptpath\secret.txt)) {
@@ -74,13 +78,13 @@ add-type @"
         }
         try {
             $scansres = Invoke-WebRequest @scans -ErrorAction Stop
-            while ($scansres -eq $null) {Start-Sleep 1}
+            while ($null -eq $scansres) {Start-Sleep 1}
             $Json = $scansres | ConvertFrom-Json
             if ($SelectScans) {
-                $Json.scans | select folder_id,name,status,id | where{$_.status -ne 'empty'} | Out-GridView -PassThru
+                $Json.scans | Select-Object folder_id,name,status,id | Where-Object {$_.status -ne 'empty'} | Out-GridView -PassThru
             }
             else {
-                $Json.scans | select folder_id,name,status,id | where{$_.status -ne 'empty'}
+                $Json.scans | Select-Object folder_id,name,status,id | Where-Object {$_.status -ne 'empty'}
             }
         }
         catch {
@@ -98,7 +102,7 @@ add-type @"
         # Parameters
         $BodyParams = @{
             "format"="$FileFormat"
-            "chapters"="vuln_by_host"
+            "chapters"="$Chapter"
             } | ConvertTo-Json
         $export = @{
             "Uri"     = "$Base_URL/scans/$ScanID/export"
@@ -135,7 +139,7 @@ add-type @"
             $file.Close()
         }
         catch {
-            if ($error[0] -imatch "Report is still being generated") {sleep 1} else {$error[0]}
+            if ($error[0] -imatch "Report is still being generated") {Start-Sleep 1} else {$error[0]}
             download
         }
     }
@@ -200,18 +204,21 @@ Function NessusScan {
         [String]$Date,
 
         [Parameter()]
+        [String]$Exclude = '!#¤%&/()=',
+
+        [Parameter()]
         [validateset('Host','Name','Title','risk','CVE','CVSS v2.0 Base Score')]
         [String]$Sort = 'CVSS v2.0 Base Score'
     )
 
     if ($WindowsPatch) {
-        Nessusreport | Where-Object {$_.name -imatch "($Date)" -and $_.host -imatch $HostName -and $_.name -imatch "update" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk} | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk | Sort-Object $sort -Descending
+        Nessusreport | Where-Object {$_.name -imatch "($Date)" -and $_.host -imatch $HostName -and $_.name -imatch "update" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk | Sort-Object $sort -Descending
     }
     if ($Vulnerabilities) {
-        Nessusreport | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk  | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk} | Sort-Object $sort -Descending
+        Nessusreport | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk  | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Sort-Object $sort -Descending
     }
     if (!$WindowsPatch -and !$Vulnerabilities) {
-        Nessusreport | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk} | Sort-Object $sort -Descending
+        Nessusreport | Where-Object {$_.cve -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.host -imatch $HostName -and $_.name -imatch $Name -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"} | Sort-Object $sort -Descending
     }
 }
 
