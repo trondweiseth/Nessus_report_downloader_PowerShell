@@ -16,3 +16,6 @@ Some commands:
                
     # Get differences between current reports and last reports
     Nessus-Diff
+    
+    # Exports all nessus reports in to one signle CSV
+    Export-Nessusreports [-Path <path> [Default($HOME)]]
