@@ -11,7 +11,7 @@ Some commands:
     Get-NessusReports [-SelectScans] [-Format [csv|html|pdf](Default:csv)]
     
     # PS! Only CSV. Collects all CSV reports available in the folder and writes it to console and makes them parsable with powershell
-    NessusScan [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
+    NessusQuery [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
                [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')]
                
     # Get differences between current reports and last reports
