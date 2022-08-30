@@ -1,4 +1,5 @@
 $Global:scriptpath = $PSScriptRoot
+
 Function Get-NessusReports {
     param
     (
@@ -15,7 +16,6 @@ Function Get-NessusReports {
         [Parameter(Mandatory=$false)]
         [string]$ServerName = "nessusserver.net"
     )
-
 
     if (!(Test-Path $scriptpath\key.txt) -or !(Test-Path $scriptpath\secret.txt)) {
         Write-Host -ForegroundColor Red -BackgroundColor Black "Missing Nessus API keys! Run Add-NessusAPIkeys to add new pair."
