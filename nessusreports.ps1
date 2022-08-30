@@ -176,7 +176,6 @@ Function Nessusreport {
     Write-Output $NessusReports
 }
 
-# Predefined parsing through nessus report(s)
 Function NessusQuery {
     [CmdletBinding()]
     param
@@ -198,6 +197,9 @@ Function NessusQuery {
         [String]$Date,
 
         [Parameter()]
+        [String]$Name,
+
+        [Parameter()]
         [String]$Exclude = '!#¤%&/()=',
 
         [Parameter()]
@@ -206,7 +208,7 @@ Function NessusQuery {
     )
 
     $res = Nessusreport | 
-    Where-Object {$_.name -imatch "($Date)" -and $_.host -imatch $HostName -and $_.name -imatch "update" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"}
+    Where-Object {$_.name -imatch "$Date" -and $_.host -imatch $HostName -and $_.name -imatch "$Name" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"}
     $res | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk -Unique | Sort-Object $sort -Descending
 }
 
