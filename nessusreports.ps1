@@ -4,9 +4,9 @@
 .DESCRIPTION
     Script to download single nessusreport(s) or in bulk and parse through them all.
 .PARAMETER Get-NessusReports
-    [-List] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)]
+    [-List] [-AddAPIKeys] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)]
 .PARAMETER NessusQuery
-     [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
+     [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]] [-OutputFull]
      [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')] [-Exclude <string>]
 .PARAMETER Nessus-Diff
     None
@@ -38,6 +38,9 @@ Function Get-NessusReports {
         [string]$Folder,
 
         [Parameter(Mandatory=$false)]
+        [switch]$AddAPIkeys,
+
+        [Parameter(Mandatory=$false)]
         [switch]$SelectScans,
 
         [Parameter(Mandatory=$false)]
@@ -45,17 +48,12 @@ Function Get-NessusReports {
         [string]$Format = 'csv',
 
         [Parameter(Mandatory=$false)]
-        [string]$ServerName = 'nessusserver.net',
+        [string[]]$ServerName = ('nessus1.net','nessus2.net'),
 
         [Parameter(Mandatory=$false)]
         [validateset('vuln_by_host','vuln_hosts_summary','vuln_by_plugin','remediations')]
         [string]$Chapter = 'vuln_hosts_summary'
     )
-
-    if (!(Test-Path $scriptpath\key.txt) -or !(Test-Path $scriptpath\secret.txt)) {
-        Write-Host -ForegroundColor Red -BackgroundColor Black "Missing Nessus API keys! Run Add-NessusAPIkeys to add new pair."
-        break
-    }
 
 # Disable ssl validation
 add-type @"
@@ -72,27 +70,20 @@ add-type @"
     [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Ssl3, [Net.SecurityProtocolType]::Tls, [Net.SecurityProtocolType]::Tls11, [Net.SecurityProtocolType]::Tls12
 
-
     # Global parameters
     $Global:FileFormat = $Format
-    $Global:Base_URL   = "https://${ServerName}:8834"
-    $Global:BasePath   = "$env:HOMEPATH\NessusReports"
+    $Global:BasePath   = "$HOME\NessusReports"
     $Global:path       = "$BasePath\CurrentNessusScan"
     $Global:prevpath   = "$BasePath\PreviousNessusScan"
-
-    # Nessus key pair.
-    $AccessKey = $($key = get-content $scriptpath\key.txt | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
-    $SecretKey = $($secret = get-content $scriptpath\secret.txt | ConvertTo-SecureString ; [pscredential]::new('user',$secret).GetNetworkCredential().Password)
-    
+     
     # File structuring for diff comparison
-    if (!$List -and $Format -ne 'html') {
+    if (!$List -and $Format -ne 'html' -and !$AddAPIkeys) {
         if (!(Test-Path $BasePath)) {[void](New-Item -Path $HOME -Name NessusReports -ItemType Directory)}
         if (!(Test-Path $BasePath\CurrentNessusScan)) {[void](New-Item -Path $BasePath -Name CurrentNessusScan -ItemType Directory)}
         if (!(Test-Path $BasePath\PreviousNessusScan)) {[void](New-Item -Path $BasePath -Name PreviousNessusScan -ItemType Directory)}
         [void](Remove-Item -Path $BasePath\PreviousNessusScan\* -Force -Recurse)
         [void](Move-Item $BasePath\CurrentNessusScan\* -Destination $BasePath\PreviousNessusScan -Force)
     }
-
 
     # Fetching Nessus scan(s)
     function scans {
@@ -175,29 +166,53 @@ add-type @"
         }
     }
 
-    # Main execution
-    if ($list) {
-        scans
+    # Adding nessus API keys for the script to use
+    function Add-APIkeys {
+        $key = Read-Host -Prompt "Accesskey for $Server" -AsSecureString
+        $key | ConvertFrom-SecureString > $scriptpath\${server}_key.txt
+        $secret = Read-Host -Prompt "Secret for $Server" -AsSecureString
+        $secret | ConvertFrom-SecureString > $scriptpath\${server}_secret.txt
     }
-    else {
-        if ($Folder) {
-            Write-Host -ForegroundColor Yellow "Downloading report(s)..."
-            (scans | ? {$_.folder_id -eq $Folder}).id | % {
-                $Global:ScanID = $_
-                export
-                download
-            }
+
+    # Main execution
+    $ServerName | % {
+        echo $_
+        $Global:Server     = $_
+        $Global:Base_URL   = "https://${Server}:8834"
+        if ($AddAPIkeys) {
+            Add-APIkeys
+            return
         }
+        if (!(Test-Path $scriptpath\${server}_key.txt) -or !(Test-Path $scriptpath\${server}_secret.txt)) {
+            Write-Host -ForegroundColor Red -BackgroundColor Black "Missing Nessus API keys! Use parameter -AddAPIkeys to add new pair for $Server."
+            return
+        }
+
+        # Nessus key pair.
+        $Global:AccessKey = $($key = get-content $scriptpath\${server}_key.txt | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
+        $Global:SecretKey = $($secret = get-content $scriptpath\${server}_secret.txt | ConvertTo-SecureString ; [pscredential]::new('user',$secret).GetNetworkCredential().Password)
+        
+        if ($list) {scans}
         else {
-            Write-Host -ForegroundColor Yellow "Downloading report(s)..."
-            (scans).id | % {
-                $Global:ScanID = $_
-                export
-                download
+            if ($Folder) {
+                Write-Host -ForegroundColor Yellow "Downloading report(s)..."
+                (scans | ? {$_.folder_id -eq $Folder}).id | % {
+                    $Global:ScanID = $_
+                    export
+                    download
+                }
             }
+            else {
+                Write-Host -ForegroundColor Yellow "Downloading report(s)..."
+                (scans).id | % {
+                    $Global:ScanID = $_
+                    export
+                    download
+                }
+            }
+            Write-Host -ForegroundColor Green "Done! Reports are saved in $path"
+            Write-Host -ForegroundColor Green "Run Nessus-Diff to see if there is any changes since last download."
         }
-        Write-Host -ForegroundColor Green "Done! Reports are saved in $path"
-        Write-Host -ForegroundColor Green "Run Nessus-Diff to see if there is any changes since last download."
     }
 }
 
@@ -265,7 +280,10 @@ Function NessusQuery {
                 $ValidSortSet = $SortValidSet | Where-Object -FilterScript { $_ -imatch $wordToComplete }
                 return $ValidSortSet
             } )]
-        [string[]]$Sort = 'CVSS v2.0 Base Score'
+        [string[]]$Sort = 'CVSS v2.0 Base Score',
+        
+        [Parameter()]
+        [switch]$OutputFull
     )
 
     $parameters=@('CVEScore','CVE','Risk','HostName','Date','Name','Exclude','Sort')
@@ -283,7 +301,12 @@ Function NessusQuery {
 
     $res = Nessusreport | 
     Where-Object {$_.name -imatch "$Date" -and $_.host -imatch $HostName -and $_.name -imatch "$Name" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"}
-    $res | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk -Unique | Sort-Object $sort -Descending
+    if ($OutputFull) {
+        $res
+    }
+    else {
+        $res | Select-Object Host,Name,Title,CVE,'CVSS v2.0 Base Score',risk -Unique | Sort-Object $sort -Descending
+    }
 }
 
 # Comparing previous downloaded report(s) with last.
@@ -291,7 +314,7 @@ Function Nessus-Diff {
     param
     (
         [validateset('Added','Removed')]
-        [string]$Difference    
+        [string]$Difference
     )
 
     if ($Difference -eq 'Added') {$diffstr = '=>'}
@@ -306,14 +329,6 @@ Function Nessus-Diff {
     else {
         Write-Host -ForegroundColor Yellow -BackgroundColor Black "No difference from last download."
     }
-}
-
-# Adding nessus API keys for the script to use
-Function Add-NessusAPIkeys {
-    $key = Read-Host -Prompt "Accesskey" -AsSecureString
-    $key | ConvertFrom-SecureString > $scriptpath\key.txt
-    $secret = Read-Host -Prompt "Secret" -AsSecureString
-    $secret | ConvertFrom-SecureString > $scriptpath\secret.txt
 }
 
 # Exporting all nessus reports in to one single CSV file.
