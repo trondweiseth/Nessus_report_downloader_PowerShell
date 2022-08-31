@@ -4,10 +4,10 @@
 .DESCRIPTION
     Script to download single nessusreport(s) or in bulk and parse through them all.
 .PARAMETER Get-NessusReports
-    [-SelectScans] [-Format [csv|html|pdf](Default:csv)]
+    [-List] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)]
 .PARAMETER NessusQuery
      [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
-     [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')]
+     [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')] [-Exclude <string>]
 .PARAMETER Nessus-Diff
     None
 .PARAMETER Export-Nessusreports
@@ -33,6 +33,9 @@ Function Get-NessusReports {
     (
         [Parameter(Mandatory=$false)]
         [switch]$List,
+
+        [Parameter(Mandatory=$false)]
+        [string]$Folder,
 
         [Parameter(Mandatory=$false)]
         [switch]$SelectScans,
@@ -77,10 +80,10 @@ add-type @"
     $Global:path       = "$BasePath\CurrentNessusScan"
     $Global:prevpath   = "$BasePath\PreviousNessusScan"
 
-    # Nessus Authentication
+    # Nessus key pair.
     $AccessKey = $($key = get-content $scriptpath\key.txt | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
     $SecretKey = $($secret = get-content $scriptpath\secret.txt | ConvertTo-SecureString ; [pscredential]::new('user',$secret).GetNetworkCredential().Password)
-
+    
     # File structuring for diff comparison
     if (!$List -and $Format -ne 'html') {
         if (!(Test-Path $BasePath)) {[void](New-Item -Path $HOME -Name NessusReports -ItemType Directory)}
@@ -90,16 +93,17 @@ add-type @"
         [void](Move-Item $BasePath\CurrentNessusScan\* -Destination $BasePath\PreviousNessusScan -Force)
     }
 
+
     # Fetching Nessus scan(s)
     function scans {
         # Parameters
-        $scans = @{
-            "Uri"     = "$Base_URL/scans"
-            "Method"  = "GET"
-            "Headers" = @{
-                "Accept" = "application/json"
+        $scans                 = @{
+            "Uri"              = "$Base_URL/scans"
+            "Method"           = "GET"
+            "Headers"          = @{
+                "Accept"       = "application/json"
                 "Content-Type" = "application/json"
-                "X-ApiKeys" = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
+                "X-ApiKeys"    = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
 
             }
         }
@@ -127,18 +131,18 @@ add-type @"
     # Exporting Nessus scan(s)
     function export {
         # Parameters
-        $BodyParams = @{
-            "format"="$FileFormat"
+        $BodyParams   = @{
+            "format"  ="$FileFormat"
             "chapters"="$Chapter"
             } | ConvertTo-Json
-        $export = @{
-            "Uri"     = "$Base_URL/scans/$ScanID/export"
-            "Method"  = "POST"
-            "Headers" = @{
-                "format" = "csv"
-                "Accept" = "application/json"
+        $export                = @{
+            "Uri"              = "$Base_URL/scans/$ScanID/export"
+            "Method"           = "POST"
+            "Headers"          = @{
+                "format"       = "csv"
+                "Accept"       = "application/json"
                 "Content-Type" = "application/json"
-                "X-ApiKeys" = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
+                "X-ApiKeys"    = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
             }
         }
         $exportres = Invoke-WebRequest @export -Body $BodyParams
@@ -148,20 +152,20 @@ add-type @"
 
     # Downloads Nessus scan(s)
     function download {
-        $download = @{
-            "Uri"     = "$Base_URL/scans/$ScanID/export/$FileID/download"
-            "Method"  = "GET"
-            "Headers" = @{
-                "Accept" = "application/octet-stream"
+        $download           = @{
+            "Uri"           = "$Base_URL/scans/$ScanID/export/$FileID/download"
+            "Method"        = "GET"
+            "Headers"       = @{
+                "Accept"    = "application/octet-stream"
                 "X-ApiKeys" = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
             }
         }
         try {
             $download = Invoke-WebRequest @download -ErrorAction Stop
-            $content = [System.Net.Mime.ContentDisposition]::new($download.Headers["Content-Disposition"])
+            $content  = [System.Net.Mime.ContentDisposition]::new($download.Headers["Content-Disposition"])
             $fileName = $content.FileName
             $fullPath = Join-Path -Path $path -ChildPath $fileName
-            $file = [System.IO.FileStream]::new($fullPath, [System.IO.FileMode]::Create)
+            $file     = [System.IO.FileStream]::new($fullPath, [System.IO.FileMode]::Create)
             $file.Write($download.Content, 0, $download.RawContentLength)
             $file.Close()
         }
@@ -176,10 +180,21 @@ add-type @"
         scans
     }
     else {
-        Write-Host -ForegroundColor Yellow "Downloading report(s)..."
-        foreach ($Global:ScanID in (scans).id) {
-            export
-            download
+        if ($Folder) {
+            Write-Host -ForegroundColor Yellow "Downloading report(s)..."
+            (scans | ? {$_.folder_id -eq $Folder}).id | % {
+                $Global:ScanID = $_
+                export
+                download
+            }
+        }
+        else {
+            Write-Host -ForegroundColor Yellow "Downloading report(s)..."
+            (scans).id | % {
+                $Global:ScanID = $_
+                export
+                download
+            }
         }
         Write-Host -ForegroundColor Green "Done! Reports are saved in $path"
         Write-Host -ForegroundColor Green "Run Nessus-Diff to see if there is any changes since last download."
@@ -203,36 +218,68 @@ Function Nessusreport {
     Write-Output $NessusReports
 }
 
+# Predefined parsing through nessus report(s)
+$Global:SortValidSet    = @('Host','Name','Title','risk','CVE',"'CVSS v2.0 Base Score'")
+$Global:RiskValidateSet = @('Critical','High','Medium','Low','None')
 Function NessusQuery {
     [CmdletBinding()]
     param
     (
         [Parameter()]
-        [String]$CVEScore,
+        [String[]]$CVEScore,
 
         [Parameter()]
-        [String]$CVE,
+        [String[]]$CVE,
 
         [Parameter()]
-        [validateset('Critical','High','Medium','Low','None')]
-        [String]$Risk,
+        [ArgumentCompleter( {
+                param ( $commandName,
+                    $parameterName,
+                    $wordToComplete,
+                    $commandAst,
+                    $fakeBoundParameters )
+                $ValidRiskSet = $RiskValidateSet | Where-Object -FilterScript { $_ -imatch $wordToComplete }
+                return $ValidRiskSet
+            } )]
+        [String[]]$Risk,
 
         [Parameter()]
-        [String]$HostName,
+        [String[]]$HostName,
 
         [Parameter()]
-        [String]$Date,
+        [String[]]$Date,
 
         [Parameter()]
-        [String]$Name,
+        [String[]]$Name,
 
         [Parameter()]
-        [String]$Exclude = '!#¤%&/()=',
+        [String[]]$Exclude = '!#¤%&/()=',
 
         [Parameter()]
-        [validateset('Host','Name','Title','risk','CVE','CVSS v2.0 Base Score')]
-        [String]$Sort = 'CVSS v2.0 Base Score'
+        [ArgumentCompleter( {
+                param ( $commandName,
+                    $parameterName,
+                    $wordToComplete,
+                    $commandAst,
+                    $fakeBoundParameters )
+                $ValidSortSet = $SortValidSet | Where-Object -FilterScript { $_ -imatch $wordToComplete }
+                return $ValidSortSet
+            } )]
+        [string[]]$Sort = 'CVSS v2.0 Base Score'
     )
+
+    $parameters=@('CVEScore','CVE','Risk','HostName','Date','Name','Exclude','Sort')
+    $parameters | % {
+        $paramvalues = Get-Variable $_ -ValueOnly
+        if ($paramvalues.count -gt 1) {
+            $paramvalues | % {
+                $value += $_ +'|'
+            }
+            $paramvalues = $value -replace ".$"
+            Set-Variable -Name $_ -Value $paramvalues
+            Clear-Variable value
+        }
+    }
 
     $res = Nessusreport | 
     Where-Object {$_.name -imatch "$Date" -and $_.host -imatch $HostName -and $_.name -imatch "$Name" -and $_.'CVSS v2.0 Base Score' -gt "$CVEScore" -and $_.cve -imatch $CVE -and $_.risk -imatch $Risk -and $_ -notmatch "$Exclude"}
@@ -241,9 +288,17 @@ Function NessusQuery {
 
 # Comparing previous downloaded report(s) with last.
 Function Nessus-Diff {
-    $Current = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\CurrentNessusScan -Filter '*.csv').FullName
-    $Previous = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\PreviousNessusScan -Filter '*.csv').FullName
-    $diff = Compare-Object -ReferenceObject $Previous -DifferenceObject $Current -Property Host,Name,Title,'plugin id',CVE,'CVSS v2.0 Base Score',port,protocol,risk | Sort-Object Host,'Plugin ID',Name | Format-Table * -AutoSize
+    param
+    (
+        [validateset('Added','Removed')]
+        [string]$Difference    
+    )
+
+    if ($Difference -eq 'Added') {$diffstr = '=>'}
+    if ($Difference -eq 'Removed') {$diffstr = '<='}
+    if ($null -eq $Current) {$Global:Current = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\CurrentNessusScan -Filter '*.csv').FullName}
+    if ($null -eq $Previous) {$Global:Previous = Import-Csv -Path (Get-ChildItem -Path $HOME\NessusReports\PreviousNessusScan -Filter '*.csv').FullName}
+    $diff = Compare-Object -ReferenceObject $Previous -DifferenceObject $Current -Property Host,Name,Title,'plugin id',CVE,'CVSS v2.0 Base Score',port,protocol,risk | Sort-Object Host,'Plugin ID',Name | where {$_.sideindicator -imatch "$diffstr"}
     if ($diff) {
         Write-Host -ForegroundColor Yellow -BackgroundColor Black "Previous scan(s) to the left & current scan(s) to the rigth"
         Write-Output $diff
