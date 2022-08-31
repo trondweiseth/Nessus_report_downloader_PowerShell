@@ -17,7 +17,7 @@ Remember to generate an API key for the user that is going to be used for this t
     # PS! Only CSV. Collects all CSV reports available in the folder and writes it to console and makes them parsable with powershell
     
         NessusQuery 
-            [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]]
+            [-WindowsPatch] [-Vulnerabilities] [-CVEScore <int32>] [-CVE <CVE>] [-Risk [Critical|High|Medium|Low|None]] [-OutputFull]
             [-HostName <Hostname>] [-Date <string>] [-Sort [Host|Name|Title...](Default:'CVSS v2.0 Base Score')] [-Exclude <string>]
                
     # Get differences between current reports and last reports
