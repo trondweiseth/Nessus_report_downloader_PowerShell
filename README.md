@@ -8,7 +8,7 @@ If you generate new keys, any existing API key will be overwritten and rendered 
 
 
 # Initial setup and usage
-- Start by getting a hold of API keys for the nessus scanners you want to interact with.
+- Start by getting a hold of API keys for the nessus server(s) you want to interact with.
   - New API keys can be generated from nessus web GUI under My Account -> API Keys 
 - Change the parameter [-ServerName] for function Get-NessusReports to your nessus server(s)
 - Change parameter $Global:BasePath under "# Global parameters" to your preferred path for storing downloaded reports.
