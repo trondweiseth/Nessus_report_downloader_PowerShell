@@ -18,25 +18,25 @@ If you generate new keys, any existing API key will be overwritten and rendered 
 
 
 # Examples
-    -To view a list over available scan(s) completed
+    - To view a list over available scan(s) completed
         $> Get-NessusReports -list
         
-    -To download all reports from scan(s) in folder 3 and keep exising report(s) in the current folder so it dosent get rotated to previous scans folder.
+    - To download all reports from scan(s) in folder 3 and keep exising report(s) in the current folder so it dosent get rotated to previous scans folder.
         $> Get-NessusReports -Folder 3 -RotateReports No
         
-    -Select individual scan(s) to download report(s)from in out-gridview
+    - Select individual scan(s) to download report(s)from in out-gridview
         $> Get-NessusReports -SelectScans
         
-    -Addin new API keys for nessus server(s)
+    - Addin new API keys for nessus server(s)
         $> Get-NessusReports -AddAPIkeys
         
-    -Parsing through nessus report(s) for any CVE score grater than 7.9 and a risk of Critical with august in it's name for missing windows patches.
+    - Parsing through nessus report(s) for any CVE score grater than 7.9 and a risk of Critical with august in it's name for missing windows patches.
         $> NessusQuery -CVEScore 7.9 -Risk Critical -Name August
         
-    -Comparing previous downloaded reports with current to see any changes are present. In this case only added changes.
+    - Comparing previous downloaded reports with current to see any changes are present. In this case only added changes.
         $> Nessus-Diff -Added
         
-    -Exporting all downloaded CVS reports in to one single CVS. Handy for exporting to excel.
+    - Exporting all downloaded CVS reports in to one single CVS. Handy for exporting to excel.
         $> Export-Nessusreports -Path $HOME\Downloads
 
 
