@@ -243,13 +243,18 @@ add-type @"
 # Importing downloaded nessus scan(s) to funtion Nessusreport
 Function Import-NessusReports {
     param
-    ([switch]$Previous)
-    $path = "$HOME\NessusReports\CurrentNessusScan"
-    $prevpath = "$HOME\NessusReports\PreviousNessusScan"
-    if ($Previous) { $Global:NessusReports = Import-Csv -Path $prevpath (Get-ChildItem -Path $prevpath -Filter '*.csv').FullName }
-    else { $Global:NessusReports = Import-Csv -Path (Get-ChildItem -Path $path -Filter '*.csv').FullName }
+    (
+        [string]$File,
+        [switch]$Previous
+    )
+    $path                                = "$HOME\NessusReports\CurrentNessusScan"
+    $prevpath                            = "$HOME\NessusReports\PreviousNessusScan"
+    if ($File) {$Global:NessusReports = Import-Csv $File}
+    if($Previous) {$Global:NessusReports = Import-Csv -Path $prevpath (Get-ChildItem -Path $path -Filter '*.csv').FullName}
+    else {$Global:NessusReports          = Import-Csv -Path (Get-ChildItem -Path $path -Filter '*.csv').FullName}
     Write-Host -ForegroundColor Cyan 'Nessusreports imported to function Nessusreport'
 }
+
 
 # Output nessusreport(s)
 Function Nessusreport {
