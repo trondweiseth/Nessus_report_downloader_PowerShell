@@ -63,4 +63,4 @@ If you generate new keys and there are keys in use, existing API keys will be ov
     # Exports all nessus reports in to one signle CSV
     
         Export-Nessusreports
-            [-Path <path> [Default($HOME)]]
+            [[-Path] <path[]>] [Default($HOME)]] [[-File] <string[]>]
