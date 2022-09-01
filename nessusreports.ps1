@@ -4,7 +4,7 @@
 .DESCRIPTION
     Script to download single nessusreport(s) or in bulk and parse through them all.
 .PARAMETER Get-NessusReports
-    [-List] [-AddAPIKeys] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)]
+    [-List] [-AddAPIKeys] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)] [-RotateReports(Default:Yes)]
 .PARAMETER NessusQuery
     [[-CVEScore] <string[]>] [[-CVE] <string[]>] [[-Risk] <string[]>] [[-HostName] <string[]>] [[-Description] <string[]>] [[-Name] <string[]>] 
     [[-PluginOutput] <string[]>] [[-Solution] <string[]>] [[-Synopsis] <string[]>] [[-Protocol] <string[]>] [[-PluginID] <string[]>] [[-Exclude] <string[]>] 
@@ -32,32 +32,36 @@ $Global:scriptpath = $PSScriptRoot
 Function Get-NessusReports {
     param
     (
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory=$false)]
         [switch]$List,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory=$false)]
         [string]$Folder,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory=$false)]
+        [validateset('Yes','No')]
+        [string]$RotateReports = 'Yes',
+
+        [Parameter(Mandatory=$false)]
         [switch]$AddAPIkeys,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory=$false)]
         [switch]$SelectScans,
 
-        [Parameter(Mandatory = $false)]
-        [validateset('csv', 'html')]
+        [Parameter(Mandatory=$false)]
+        [validateset('csv','html')]
         [string]$Format = 'csv',
 
-        [Parameter(Mandatory = $false)]
-        [string[]]$ServerName = ('nessus1.net', 'nessus2.net'),
+        [Parameter(Mandatory=$false)]
+        [string[]]$ServerName = ('nessus1.net','nessus2.net'),
 
-        [Parameter(Mandatory = $false)]
-        [validateset('vuln_by_host', 'vuln_hosts_summary', 'vuln_by_plugin', 'remediations')]
+        [Parameter(Mandatory=$false)]
+        [validateset('vuln_by_host','vuln_hosts_summary','vuln_by_plugin','remediations')]
         [string]$Chapter = 'vuln_hosts_summary'
     )
 
-    # Disable ssl validation
-    add-type @"
+# Disable ssl validation
+add-type @"
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
     public class TrustAllCertsPolicy : ICertificatePolicy {
@@ -73,40 +77,45 @@ Function Get-NessusReports {
 
     # Global parameters
     $Global:FileFormat = $Format
-    $Global:BasePath = "$HOME\NessusReports"
-    $Global:path = "$BasePath\CurrentNessusScan"
-    $Global:prevpath = "$BasePath\PreviousNessusScan"
-     
+    $Global:BasePath   = "$HOME\NessusReports"
+    $Global:path       = "$BasePath\CurrentNessusScan"
+    $Global:prevpath   = "$BasePath\PreviousNessusScan"
+    
+
     # File structuring for diff comparison
-    if (!$List -and $Format -ne 'html' -and !$AddAPIkeys) {
-        if (!(Test-Path $BasePath)) { [void](New-Item -Path $HOME -Name NessusReports -ItemType Directory) }
-        if (!(Test-Path $BasePath\CurrentNessusScan)) { [void](New-Item -Path $BasePath -Name CurrentNessusScan -ItemType Directory) }
-        if (!(Test-Path $BasePath\PreviousNessusScan)) { [void](New-Item -Path $BasePath -Name PreviousNessusScan -ItemType Directory) }
-        [void](Remove-Item -Path $BasePath\PreviousNessusScan\* -Force -Recurse)
-        [void](Move-Item $BasePath\CurrentNessusScan\* -Destination $BasePath\PreviousNessusScan -Force)
+    if ($RotateReports -eq 'Yes') {
+        if (!$List -and $Format -ne 'html' -and !$AddAPIkeys) {
+            if (!(Test-Path $BasePath)) {[void](New-Item -Path $HOME -Name NessusReports -ItemType Directory)}
+            if (!(Test-Path $BasePath\CurrentNessusScan)) {[void](New-Item -Path $BasePath -Name CurrentNessusScan -ItemType Directory)}
+            if (!(Test-Path $BasePath\PreviousNessusScan)) {[void](New-Item -Path $BasePath -Name PreviousNessusScan -ItemType Directory)}
+            [void](Remove-Item -Path $BasePath\PreviousNessusScan\* -Force -Recurse)
+            [void](Move-Item $BasePath\CurrentNessusScan\* -Destination $BasePath\PreviousNessusScan -Force)
+        }
     }
 
     # Fetching Nessus scan(s)
     function scans {
+        $error.Clear()
         # Parameters
-        $scans = @{
-            "Uri"     = "$Base_URL/scans"
-            "Method"  = "GET"
-            "Headers" = @{
+        $scans                 = @{
+            "Uri"              = "$Base_URL/scans"
+            "Method"           = "GET"
+            "Headers"          = @{
                 "Accept"       = "application/json"
                 "Content-Type" = "application/json"
                 "X-ApiKeys"    = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
+
             }
         }
         try {
             $scansres = Invoke-WebRequest @scans -ErrorAction Stop
-            while ($null -eq $scansres) { Start-Sleep 1 }
+            while ($null -eq $scansres) {Start-Sleep 1}
             $Json = $scansres | ConvertFrom-Json
             if ($SelectScans) {
-                $Json.scans | Select-Object folder_id, name, status, id | Where-Object { $_.status -ne 'empty' } | Out-GridView -PassThru
+                $Json.scans | Select-Object folder_id,name,status,id | Where-Object {$_.status -ne 'empty'} | Out-GridView -PassThru
             }
             else {
-                $Json.scans | Select-Object folder_id, name, status, id | Where-Object { $_.status -ne 'empty' }
+                $Json.scans | Select-Object folder_id,name,status,id | Where-Object {$_.status -ne 'empty'}
             }
         }
         catch {
@@ -121,64 +130,76 @@ Function Get-NessusReports {
 
     # Exporting Nessus scan(s)
     function export {
+        $error.Clear()
         # Parameters
-        $BodyParams = @{
-            "format"   = "$FileFormat"
-            "chapters" = "$Chapter"
-        } | ConvertTo-Json
-        $export = @{
-            "Uri"     = "$Base_URL/scans/$ScanID/export"
-            "Method"  = "POST"
-            "Headers" = @{
+        $BodyParams   = @{
+            "format"  ="$FileFormat"
+            "chapters"="$Chapter"
+            } | ConvertTo-Json
+        $export                = @{
+            "Uri"              = "$Base_URL/scans/$ScanID/export"
+            "Method"           = "POST"
+            "Headers"          = @{
                 "format"       = "csv"
                 "Accept"       = "application/json"
                 "Content-Type" = "application/json"
                 "X-ApiKeys"    = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
             }
         }
-        $exportres = Invoke-WebRequest @export -Body $BodyParams
-        $Json = $exportres | ConvertFrom-Json
-        $Global:FileID = $Json.file
+        try {
+            $exportres = Invoke-WebRequest @export -Body $BodyParams
+            $Json = $exportres | ConvertFrom-Json
+            $Global:FileID = $Json.file
+        }
+        catch {
+            if ($error[0] -imatch "The requested file was not found") {return}
+            else {$error[0]}
+        }
     }
 
     # Downloads Nessus scan(s)
     function download {
-        $download = @{
-            "Uri"     = "$Base_URL/scans/$ScanID/export/$FileID/download"
-            "Method"  = "GET"
-            "Headers" = @{
+        $error.Clear()
+        $download           = @{
+            "Uri"           = "$Base_URL/scans/$ScanID/export/$FileID/download"
+            "Method"        = "GET"
+            "Headers"       = @{
                 "Accept"    = "application/octet-stream"
                 "X-ApiKeys" = "accessKey=$($AccessKey); secretKey=$($SecretKey)"
             }
         }
         try {
             $download = Invoke-WebRequest @download -ErrorAction Stop
-            $content = [System.Net.Mime.ContentDisposition]::new($download.Headers["Content-Disposition"])
+            $content  = [System.Net.Mime.ContentDisposition]::new($download.Headers["Content-Disposition"])
             $fileName = $content.FileName
             $fullPath = Join-Path -Path $path -ChildPath $fileName
-            $file = [System.IO.FileStream]::new($fullPath, [System.IO.FileMode]::Create)
+            $file     = [System.IO.FileStream]::new($fullPath, [System.IO.FileMode]::Create)
             $file.Write($download.Content, 0, $download.RawContentLength)
             $file.Close()
+            $Global:success=$true
         }
         catch {
-            if ($error[0] -imatch "Report is still being generated") { Start-Sleep 1 } else { $error[0] }
-            download
+            if ($error[0] -imatch "Report is still being generated") {Start-Sleep 2;download}
+            if ($error[0] -imatch "The requested file was not found") {return}
+            else {$error[0]}
         }
     }
 
     # Adding nessus API keys for the script to use
     function Add-APIkeys {
-        $key = Read-Host -Prompt "Accesskey for $Server" -AsSecureString
-        $key | ConvertFrom-SecureString > $scriptpath\${server}_key.txt
+        $key    = Read-Host -Prompt "Accesskey for $Server" -AsSecureString
+        $key    | ConvertFrom-SecureString > $scriptpath\${server}_key.txt
         $secret = Read-Host -Prompt "Secret for $Server" -AsSecureString
         $secret | ConvertFrom-SecureString > $scriptpath\${server}_secret.txt
     }
 
     # Main execution
     $ServerName | % {
-        Write-Host -ForegroundColor Yellow $_
-        $Global:Server = $_
-        $Global:Base_URL = "https://${Server}:8834"
+
+        $Global:Server     = $_
+        $Global:Base_URL   = "https://${Server}:8834"
+        $Global:success=$false
+
         if ($AddAPIkeys) {
             Add-APIkeys
             return
@@ -189,14 +210,14 @@ Function Get-NessusReports {
         }
 
         # Nessus key pair.
-        $Global:AccessKey = $($key = get-content $scriptpath\${server}_key.txt | ConvertTo-SecureString ; [pscredential]::new('user', $key).GetNetworkCredential().Password)
-        $Global:SecretKey = $($secret = get-content $scriptpath\${server}_secret.txt | ConvertTo-SecureString ; [pscredential]::new('user', $secret).GetNetworkCredential().Password)
+        $Global:AccessKey = $($key = get-content $scriptpath\${server}_key.txt       | ConvertTo-SecureString ; [pscredential]::new('user',$key).GetNetworkCredential().Password)
+        $Global:SecretKey = $($secret = get-content $scriptpath\${server}_secret.txt | ConvertTo-SecureString ; [pscredential]::new('user',$secret).GetNetworkCredential().Password)
         
-        if ($list) { scans }
+        if ($list) {scans}
         else {
             if ($Folder) {
-                Write-Host -ForegroundColor Yellow "Downloading report(s)..."
-                (scans | ? { $_.folder_id -eq $Folder }).id | % {
+                Write-Host -ForegroundColor Yellow "Downloading report(s) from $Server..."
+                (scans | ? {$_.folder_id -eq $Folder}).id | % {
                     $Global:ScanID = $_
                     export
                     download
@@ -210,8 +231,11 @@ Function Get-NessusReports {
                     download
                 }
             }
-            Write-Host -ForegroundColor Green "Done! Reports from $server are saved in $path"
-            Write-Host -ForegroundColor Green "Run Nessus-Diff to see if there is any changes since last download."
+            if ($success -eq $true) {
+                Write-Host -ForegroundColor Green "Done! Report(s) from $Server are saved in $path"
+                Write-Host -ForegroundColor Green "Run Nessus-Diff to see if there is any changes since last download."
+                }
+            else {"Nothing to download from $server. Check if the folder id or scan id is correct."}
         }
     }
 }
