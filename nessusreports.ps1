@@ -12,7 +12,7 @@
 .PARAMETER Nessus-Diff
     None
 .PARAMETER Export-Nessusreports
-    [-Path <path> [Default($HOME)]]
+    [[-Path] <path[]>] [Default($HOME)]] [[-File] <string[]>]
 .INPUTS
     None
 .OUTPUTS
