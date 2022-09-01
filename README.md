@@ -4,6 +4,22 @@ Powershell script to download and parse through nessus reports
 A short script to bulk download nessus reports and parse through them with PowerShell.
 Remember to generate an API key for the user that is going to be used for this task.
 
+# Examples
+    -To view a list over available scans completed
+        #> Get-NessusReports -list
+    -To download all reports from scan(s) in folder 3
+        #> Get-NessusReports -Folder 3
+    -Select individual scans to download reports from in out-gridview
+        #> Get-NessusReports -SelectScans
+    -Addin new API keys for nessus server(s)
+        #> Get-NessusReports -AddAPIkeys
+    -Parsing through all nessus reports for any CVE score grater than 7.9 and a risk of Critical with august in it's name for missing windows patches.
+        #> NessusQuery -CVEScore 7.9 -Risk Critical -Name August
+    -Comparing previous downloaded reports with a current to see any changes made. In this case only added changes.
+        #> Nessus-Diff -Added
+    -Exporting all downloaded CVS reports in to one single CVS. Handy for exporting to excel or sending a complete report.
+        #> Export-Nessusreports -Path $HOME\Downloads
+
 
 # Syntax
     
@@ -12,7 +28,7 @@ Remember to generate an API key for the user that is going to be used for this t
     # Modify the -ServerName parameter  to set a default nessus host instead of using the parameter.
     
         Get-NessusReports
-            [-List] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)] [-ServerName <nessusserver>]
+            [-List] [-AddAPIkeys] [-Folder <int32>] [-SelectScans] [-Format [csv|html](Default:csv)] [-ServerName <nessusserver>]
     
     # PS! Only CSV. Collects all CSV reports available in the folder and writes it to console and makes them parsable with powershell
     
@@ -23,13 +39,9 @@ Remember to generate an API key for the user that is going to be used for this t
                
     # Get differences between current reports and last reports
     
-        Nessus-Diff
+        Nessus-Diff [-Added] [-Removed]
     
     # Exports all nessus reports in to one signle CSV
     
         Export-Nessusreports
             [-Path <path> [Default($HOME)]]
-    
-    # Add API keys. It generates key files in the script location that the script use. (keys are encrypted to the user adding them)
-    
-        Add-NessusAPIkeys
