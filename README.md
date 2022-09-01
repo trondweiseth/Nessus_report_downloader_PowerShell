@@ -4,7 +4,7 @@ Powershell script to download and parse through nessus report(s)
 A short script to bulk download nessus report(s) and parse through them with PowerShell.
 Remember to generate an API key for the user that is going to be used for this task if not already done.
 PS! Do not generate new keys in a production enviroment without checking if keys already exist and being used.
-If you generate new keys, any existing API key will be overwritten and rendered useless for anyone using them.
+If you generate new keys and there are keys in use, existing API keys will be overwritten and rendered useless for anyone using them.
 
 
 # Initial setup and usage
