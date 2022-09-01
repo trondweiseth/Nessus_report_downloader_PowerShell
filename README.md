@@ -6,6 +6,16 @@ Remember to generate an API key for the user that is going to be used for this t
 PS! Do not generate new keys in a production enviroment without checking if keys already exist and being used.
 If you generate new keys, any existing API key will be overwritten and rendered useless for anyone using them.
 
+
+# Initial setup and usage
+    # Start by getting a hold of API keys for the nessus scanners you want to interact with
+    # Change the parameter [-ServerName] for function Get-NessusReports to your nessus server(s)
+    # Change parameter $Global:BasePath under # Global parameters to your prefered pat for storing downloaded reports.
+    # Run Get-NessusReports -AddAPIkeys and add your nessus API keys.
+    # Run Get-NessusReports -List to get a list over available scans to export and download
+    # Run Get-NessusReports to download all or use parameter -Folder / -SelectScans to download everything within a folder or individual scans.
+
+
 # Examples
     -To view a list over available scan(s) completed
         $> Get-NessusReports -list
