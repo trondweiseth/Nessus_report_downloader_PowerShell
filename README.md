@@ -8,13 +8,13 @@ If you generate new keys, any existing API key will be overwritten and rendered 
 
 
 # Initial setup and usage
-Markup: *Start by getting a hold of API keys for the nessus scanners you want to interact with.
-            *New API keys can be generated from nessus web GUI under My Account -> API Keys 
-        *Change the parameter [-ServerName] for function Get-NessusReports to your nessus server(s)
-        *Change parameter $Global:BasePath under "# Global parameters" to your prefered pat for storing downloaded reports.
-        *Run Get-NessusReports -AddAPIkeys and add your nessus API keys.
-        *Run Get-NessusReports -List to get a list over available scans to export and download
-        *Run Get-NessusReports to download all or use parameter -Folder / -SelectScans to download everything within a folder or individual scans.
+Markup: * Start by getting a hold of API keys for the nessus scanners you want to interact with.
+            * New API keys can be generated from nessus web GUI under My Account -> API Keys 
+        * Change the parameter [-ServerName] for function Get-NessusReports to your nessus server(s)
+        * Change parameter $Global:BasePath under "# Global parameters" to your prefered pat for storing downloaded reports.
+        * Run Get-NessusReports -AddAPIkeys and add your nessus API keys.
+        * Run Get-NessusReports -List to get a list over available scans to export and download
+        * Run Get-NessusReports to download all or use parameter -Folder / -SelectScans to download everything within a folder or individual scans.
 
 
 # Examples
