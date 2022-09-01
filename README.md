@@ -6,19 +6,25 @@ Remember to generate an API key for the user that is going to be used for this t
 
 # Examples
     -To view a list over available scans completed
-        #> Get-NessusReports -list
+        $> Get-NessusReports -list
+        
     -To download all reports from scan(s) in folder 3
-        #> Get-NessusReports -Folder 3
+        $> Get-NessusReports -Folder 3
+        
     -Select individual scans to download reports from in out-gridview
-        #> Get-NessusReports -SelectScans
+        $> Get-NessusReports -SelectScans
+        
     -Addin new API keys for nessus server(s)
-        #> Get-NessusReports -AddAPIkeys
+        $> Get-NessusReports -AddAPIkeys
+        
     -Parsing through all nessus reports for any CVE score grater than 7.9 and a risk of Critical with august in it's name for missing windows patches.
-        #> NessusQuery -CVEScore 7.9 -Risk Critical -Name August
+        $> NessusQuery -CVEScore 7.9 -Risk Critical -Name August
+        
     -Comparing previous downloaded reports with a current to see any changes made. In this case only added changes.
-        #> Nessus-Diff -Added
+        $> Nessus-Diff -Added
+        
     -Exporting all downloaded CVS reports in to one single CVS. Handy for exporting to excel or sending a complete report.
-        #> Export-Nessusreports -Path $HOME\Downloads
+        $> Export-Nessusreports -Path $HOME\Downloads
 
 
 # Syntax
